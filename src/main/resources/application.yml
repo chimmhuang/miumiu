@@ -1,0 +1,21 @@
+server:
+  port: 8082
+
+spring:
+  devtools:
+    restart:
+      enabled: false
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://111.231.202.143:3306/miumiu?useUnicode=true&characterEncoding=utf-8
+    hikari: # springboot 2.0 整合了hikari ,据说这是目前性能最好的java数据库连接池
+      username: root
+      password: Xd@14227
+  jpa:
+    hibernate:
+      ddl-auto: update  # 第一次建表create  后面用update，要不然每次重启都会新建表
+    show-sql: true
+# 微信小程序密钥
+wx-mini-Program:
+  AppID: wx55a8700f35f7033a
+  AppSecret: 4754cea4c11808ba336e7047b107473f
