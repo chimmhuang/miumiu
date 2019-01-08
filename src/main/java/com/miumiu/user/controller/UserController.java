@@ -2,6 +2,8 @@ package com.miumiu.user.controller;
 
 import com.alibaba.fastjson.JSON;
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +33,14 @@ public class UserController {
     @Autowired
     private RestTemplate restTemplate;
 
+    /**
+     * 微信小程序登录
+     * @param code 临时TOKEN
+     * @return
+     */
     @PostMapping("/wxmini/login")
+    @ApiOperation(value = "微信小程序登录测试",notes = "测试阶段，该接口还未完成")
+    @ApiImplicitParam(name = "code",value = "临时TOKEN",paramType = "query",example = "KWHASBNJKGIAnkg")
     public String login(String code) {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
 
