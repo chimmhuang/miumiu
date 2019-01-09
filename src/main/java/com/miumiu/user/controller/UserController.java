@@ -7,12 +7,10 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import javax.validation.constraints.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,7 +40,7 @@ public class UserController {
     @PostMapping("/wxmini/login")
     @ApiOperation(value = "微信小程序登录测试",notes = "测试阶段，该接口还未完成")
     @ApiImplicitParam(name = "code",value = "临时TOKEN",paramType = "query",example = "KWHASBNJKGIAnkg")
-    public String login(@RequestParam String code) {
+    public String login(@NotNull String code) {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
 
         Map<String, String> params = new HashMap<>();
