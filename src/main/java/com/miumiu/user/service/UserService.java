@@ -24,4 +24,25 @@ public class UserService {
     public User getUserInfoByWx(String openid) {
         return userDao.findUserByWxOpenid(openid);
     }
+
+    /**
+     * 保存用户
+     * @param user 用户实体类
+     */
+    public void saveUserInfo(User user) {
+        userDao.save(user);
+    }
+
+    /**
+     * 更新sessionkey
+     * @param openId
+     * @param sessionKey
+     */
+    public void updateSessionKey(String openId, String sessionKey) {
+        User user = userDao.findUserByWxOpenid(openId);
+        if (user != null) {
+            user.setSessionKey(sessionKey);
+            userDao.save(user);
+        }
+    }
 }

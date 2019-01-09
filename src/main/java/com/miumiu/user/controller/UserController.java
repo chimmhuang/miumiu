@@ -1,6 +1,8 @@
 package com.miumiu.user.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.miumiu.base.domain.response.CommonCode;
+import com.miumiu.base.domain.response.ResponseResult;
 import com.miumiu.base.utils.DateUtil;
 import com.miumiu.base.utils.StringUtil;
 import com.miumiu.domain.user.entity.User;
@@ -60,7 +62,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/wxmini/login")
-    @ApiOperation(value = "微信小程序登录测试",
+    @ApiOperation(value = "微信小程序-登陆获取",
             notes = "如果code过期或无效，微信会返回40029错误\n" +
                     "微信验证通过，但是miumiu数据库没有用户数据，会返回21000提示信息\n" +
                     "微信验证通过，并且miumiu存有用户信息，则返回状态码0，并返回TOKEN数据")
@@ -75,9 +77,9 @@ public class UserController {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
 
         Map<String, String> params = new HashMap<>(3);
-        params.put("APPID", APPID);
         params.put("APPSECRET", APPSECRET);
         params.put("code", loginCodeVO.getCode());
+        params.put("APPID", APPID);
 
         String body = restTemplate.getForObject(url, String.class, params);
         LoginCertificateDTO certificateDTO = JSON.parseObject(body, LoginCertificateDTO.class);
@@ -92,6 +94,8 @@ public class UserController {
             return "\"code\":21000,\"message\":\"数据库内没有用户信息\"";
         }
 
+        // 更新数据库的sessionKey
+        userService.updateSessionKey(certificateDTO.getOpenid(),certificateDTO.getSession_key());
         // 将用户id作为TOKEN返回
         return "\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"";
     }
@@ -101,9 +105,13 @@ public class UserController {
      * @param decryptVO 加密数据
      * @return
      */
-    @ApiOperation(value = "微信小程序-解密用户敏感数据获取用户信息")
+    @ApiOperation(value = "微信小程序-解密用户敏感数据存储用户信息")
+    @ApiResponses({
+            @ApiResponse(code = 10000,message = "操作成功"),
+            @ApiResponse(code = 11111, message = "操作失败")
+    })
     @PostMapping("/wxmini/saveUserInfo")
-    public String saveUserInfo(@RequestBody @ApiParam(name = "decryptVO",value = "加密数据类",required = true) DecryptVO decryptVO) {
+    public ResponseResult saveUserInfo(@RequestBody @ApiParam(name = "decryptVO",value = "加密数据类",required = true) DecryptVO decryptVO) {
         // 被加密的数据
         byte[] dataByte = Base64.decode(decryptVO.getEncryptedData());
         // 加密秘钥
@@ -142,6 +150,7 @@ public class UserController {
                  * @param _proto_:Object
                  */
                 Map<String,Object> resultMap = JSON.parseObject(result, Map.class);
+                //将解密后的内容提取出来存放到user对象中
                 User user = new User(
                         StringUtil.uuid(),
                         (String) resultMap.get("openId"),
@@ -151,7 +160,9 @@ public class UserController {
                         (String)resultMap.get("nickName"),
                         (int)resultMap.get("gender"),
                         null,(String)resultMap.get("nickName"));
-                return JSON.toJSONString(JSON.parse(result));
+                //将User对象写入数据库
+                userService.saveUserInfo(user);
+                return new ResponseResult(CommonCode.SUCCESS);
             }
         } catch (NoSuchAlgorithmException e) {
             logger.error(e.getMessage(), e);
@@ -172,7 +183,7 @@ public class UserController {
         } catch (NoSuchProviderException e) {
             logger.error(e.getMessage(), e);
         }
-        return null;
+        return new ResponseResult(CommonCode.FAIL);
     }
 
 }
