@@ -1,6 +1,11 @@
 package com.miumiu.user.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.miumiu.base.utils.DateUtil;
+import com.miumiu.base.utils.StringUtil;
+import com.miumiu.domain.user.entity.User;
+import com.miumiu.user.dto.LoginCertificateDTO;
+import com.miumiu.user.service.UserService;
 import com.miumiu.user.vo.DecryptVO;
 import com.miumiu.user.vo.LoginCodeVO;
 import io.swagger.annotations.*;
@@ -22,6 +27,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.*;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,6 +48,8 @@ public class UserController {
 
     @Autowired
     private RestTemplate restTemplate;
+    @Autowired
+    private UserService userService;
 
     private static Logger logger = Logger.getLogger(UserController.class);
 
@@ -52,12 +60,16 @@ public class UserController {
      * @return
      */
     @PostMapping("/wxmini/login")
-    @ApiOperation(value = "微信小程序登录测试",notes = "测试阶段，该接口还未完成")
+    @ApiOperation(value = "微信小程序登录测试",
+            notes = "如果code过期或无效，微信会返回40029错误\n" +
+                    "微信验证通过，但是miumiu数据库没有用户数据，会返回21000提示信息\n" +
+                    "微信验证通过，并且miumiu存有用户信息，则返回状态码0，并返回TOKEN数据")
     @ApiResponses({
             @ApiResponse(code = -1,message = "系统繁忙，此时请开发者稍候再试"),
             @ApiResponse(code = 0,message = "请求成功"),
+            @ApiResponse(code = 21000,message = "登录成功,但数据库内没有用户信息"),
             @ApiResponse(code = 40029,message = "code 无效"),
-            @ApiResponse(code = 45011,message = "45011")
+            @ApiResponse(code = 45011,message = "频率限制，每个用户每分钟100次")
     })
     public String login(@RequestBody @ApiParam(name = "loginCodeVO",value = "传入临时TOKEN",required = true) LoginCodeVO loginCodeVO) {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
@@ -68,17 +80,30 @@ public class UserController {
         params.put("code", loginCodeVO.getCode());
 
         String body = restTemplate.getForObject(url, String.class, params);
-        return JSON.toJSONString(JSON.parse(body));
+        LoginCertificateDTO certificateDTO = JSON.parseObject(body, LoginCertificateDTO.class);
+
+        if (certificateDTO.getErrcode() != 0) {
+            return "\"code\":"+certificateDTO.getErrcode()+",\"message\":\""+certificateDTO.getErrmsg()+"\"";
+        }
+
+        // 判断用户是否第一次登录
+        User user = userService.getUserInfoByWx(certificateDTO.getOpenid());
+        if (user == null) {
+            return "\"code\":21000,\"message\":\"数据库内没有用户信息\"";
+        }
+
+        // 将用户id作为TOKEN返回
+        return "\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"";
     }
 
     /**
-     * 解密用户敏感数据获取用户信息
+     * 解密用户敏感数据存储用户信息
      * @param decryptVO 加密数据
      * @return
      */
     @ApiOperation(value = "微信小程序-解密用户敏感数据获取用户信息")
-    @PostMapping("/wxmini/getUserInfo")
-    public String getUserInfo(@RequestBody @ApiParam(name = "decryptVO",value = "加密数据类",required = true) DecryptVO decryptVO) {
+    @PostMapping("/wxmini/saveUserInfo")
+    public String saveUserInfo(@RequestBody @ApiParam(name = "decryptVO",value = "加密数据类",required = true) DecryptVO decryptVO) {
         // 被加密的数据
         byte[] dataByte = Base64.decode(decryptVO.getEncryptedData());
         // 加密秘钥
@@ -105,6 +130,27 @@ public class UserController {
             byte[] resultByte = cipher.doFinal(dataByte);
             if (null != resultByte && resultByte.length > 0) {
                 String result = new String(resultByte, "UTF-8");
+                /**
+                 * @param avatarUrl:头像地址
+                 * @param city:Chengdu
+                 * @param gender:1
+                 * @param language:zh_CN
+                 * @param nickName:吃茫茫
+                 * @param openId:...
+                 * @param province:Sichuan
+                 * @param watermark:{appid:...,timestamp:1547003580}
+                 * @param _proto_:Object
+                 */
+                Map<String,Object> resultMap = JSON.parseObject(result, Map.class);
+                User user = new User(
+                        StringUtil.uuid(),
+                        (String) resultMap.get("openId"),
+                        decryptVO.getSessionKey(),
+                        new Date(),
+                        (String)resultMap.get("avatarUrl"),
+                        (String)resultMap.get("nickName"),
+                        (int)resultMap.get("gender"),
+                        null,(String)resultMap.get("nickName"));
                 return JSON.toJSONString(JSON.parse(result));
             }
         } catch (NoSuchAlgorithmException e) {

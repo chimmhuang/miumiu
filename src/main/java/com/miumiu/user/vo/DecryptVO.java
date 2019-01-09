@@ -1,5 +1,6 @@
 package com.miumiu.user.vo;
 
+import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
@@ -9,6 +10,7 @@ import lombok.Data;
  * @description 用户敏感数据
  */
 @Data
+@ApiModel("用户敏感数据VO")
 public class DecryptVO {
 
     @ApiModelProperty(name = "encryptedData",value = "包括敏感数据在内的完整用户信息的加密数据")
