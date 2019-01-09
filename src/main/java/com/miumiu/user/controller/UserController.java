@@ -34,19 +34,19 @@ public class UserController {
 
     /**
      * 微信小程序登录
-     * @param code 临时TOKEN
+     * @param map 临时TOKEN {"code":"ASHASJNFA"}
      * @return
      */
     @PostMapping("/wxmini/login")
     @ApiOperation(value = "微信小程序登录测试",notes = "测试阶段，该接口还未完成")
-    @ApiImplicitParam(name = "code",value = "临时TOKEN",paramType = "query",example = "KWHASBNJKGIAnkg")
-    public String login(@NotNull String code) {
+    @ApiImplicitParam(name = "code",value = "临时TOKEN",paramType = "body",example = "KWHASBNJKGIAnkg")
+    public String login(@RequestBody Map<String,String> map) {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
 
         Map<String, String> params = new HashMap<>();
         params.put("APPID", APPID);
         params.put("APPSECRET", APPSECRET);
-        params.put("code", code);
+        params.put("code", map.get("code"));
 
         String body = restTemplate.getForObject(url, String.class, params);
         return JSON.toJSONString(JSON.parse(body));
