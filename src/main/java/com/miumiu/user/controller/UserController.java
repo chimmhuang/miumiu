@@ -87,19 +87,19 @@ public class UserController {
         LoginCertificateDTO certificateDTO = JSON.parseObject(body, LoginCertificateDTO.class);
 
         if (certificateDTO.getErrcode() != 0) {
-            return JSON.parse("\"code\":"+certificateDTO.getErrcode()+",\"message\":\""+certificateDTO.getErrmsg()+"\"");
+            return JSON.parse("{\"code\":"+certificateDTO.getErrcode()+",\"message\":\""+certificateDTO.getErrmsg()+"\"}");
         }
 
         // 判断用户是否第一次登录
         User user = userService.getUserInfoByWx(certificateDTO.getOpenid());
         if (user == null) {
-            return JSON.parse("\"code\":21000,\"message\":\"数据库内没有用户信息\"");
+            return JSON.parse("{\"code\":21000,\"message\":\"数据库内没有用户信息\"}");
         }
 
         // 更新数据库的sessionKey
         userService.updateSessionKey(certificateDTO.getOpenid(),certificateDTO.getSession_key());
         // 将用户id作为TOKEN返回
-        return JSON.parse("\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"");
+        return JSON.parse("{\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"}");
     }
 
     /**
