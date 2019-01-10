@@ -1,6 +1,8 @@
 package com.miumiu.user.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.miumiu.base.domain.PageResult;
+import com.miumiu.base.domain.request.PageQueryRequest;
 import com.miumiu.base.domain.response.CommonCode;
 import com.miumiu.base.domain.response.ResponseResult;
 import com.miumiu.base.utils.DateUtil;
@@ -73,7 +75,7 @@ public class UserController {
             @ApiResponse(code = 40029,message = "code 无效"),
             @ApiResponse(code = 45011,message = "频率限制，每个用户每分钟100次")
     })
-    public String login(@RequestBody @ApiParam(name = "loginCodeVO",value = "传入临时TOKEN",required = true) LoginCodeVO loginCodeVO) {
+    public Object login(@RequestBody @ApiParam(name = "loginCodeVO",value = "传入临时TOKEN",required = true) LoginCodeVO loginCodeVO) {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
 
         Map<String, String> params = new HashMap<>(3);
@@ -85,19 +87,19 @@ public class UserController {
         LoginCertificateDTO certificateDTO = JSON.parseObject(body, LoginCertificateDTO.class);
 
         if (certificateDTO.getErrcode() != 0) {
-            return "\"code\":"+certificateDTO.getErrcode()+",\"message\":\""+certificateDTO.getErrmsg()+"\"";
+            return JSON.parse("\"code\":"+certificateDTO.getErrcode()+",\"message\":\""+certificateDTO.getErrmsg()+"\"");
         }
 
         // 判断用户是否第一次登录
         User user = userService.getUserInfoByWx(certificateDTO.getOpenid());
         if (user == null) {
-            return "\"code\":21000,\"message\":\"数据库内没有用户信息\"";
+            return JSON.parse("\"code\":21000,\"message\":\"数据库内没有用户信息\"");
         }
 
         // 更新数据库的sessionKey
         userService.updateSessionKey(certificateDTO.getOpenid(),certificateDTO.getSession_key());
         // 将用户id作为TOKEN返回
-        return "\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"";
+        return JSON.parse("\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"");
     }
 
     /**
@@ -184,6 +186,30 @@ public class UserController {
             logger.error(e.getMessage(), e);
         }
         return new ResponseResult(CommonCode.FAIL);
+    }
+
+    /**
+     * 查询所有用户信息
+     * @return
+     */
+    @ApiOperation(value = "查询所有用户信息",notes = "只需要传入page和size即可，若不传入，默认page=1，size=10")
+    @GetMapping("/findAll")
+    public PageResult<User> findAll(@RequestBody @ApiParam(name = "pageQueryRequest",value = "分页查询") PageQueryRequest pageQueryRequest) {
+
+        int page = 1;
+        int size = 10;
+
+        if (pageQueryRequest != null) {
+            if (pageQueryRequest.getPage() != 0) {
+                page = pageQueryRequest.getPage();
+            }
+            if (pageQueryRequest.getSize() != 0) {
+                page = pageQueryRequest.getSize();
+            }
+        }
+
+        PageResult<User> result = userService.findAll(page, size);
+        return result;
     }
 
 }
