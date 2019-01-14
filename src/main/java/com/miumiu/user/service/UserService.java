@@ -27,7 +27,7 @@ public class UserService {
      * @return User/null
      */
     public User getUserInfoByWx(String openid) {
-        return userDao.findUserByWxOpenid(openid);
+        return userDao.findByWxOpenid(openid);
     }
 
     /**
@@ -44,7 +44,7 @@ public class UserService {
      * @param sessionKey
      */
     public void updateSessionKey(String openId, String sessionKey) {
-        User user = userDao.findUserByWxOpenid(openId);
+        User user = userDao.findByWxOpenid(openId);
         if (user != null) {
             user.setSessionKey(sessionKey);
             userDao.save(user);
