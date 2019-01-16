@@ -3,13 +3,12 @@ package com.miumiu.user.controller;
 import com.alibaba.fastjson.JSON;
 import com.miumiu.base.domain.PageResult;
 import com.miumiu.base.domain.request.PageQueryRequest;
-import com.miumiu.base.domain.response.CommonCode;
 import com.miumiu.base.domain.response.ResponseResult;
-import com.miumiu.base.utils.DateUtil;
 import com.miumiu.base.utils.StringUtil;
 import com.miumiu.domain.user.entity.User;
 import com.miumiu.user.dto.LoginCertificateDTO;
 import com.miumiu.user.service.UserService;
+import com.miumiu.user.vo.AutoLoginVO;
 import com.miumiu.user.vo.DecryptVO;
 import com.miumiu.user.vo.LoginCodeVO;
 import io.swagger.annotations.*;
@@ -65,8 +64,8 @@ public class UserController {
      */
     @PostMapping("/wxmini/login")
     @ApiOperation(value = "微信小程序-登陆获取",
-            notes = "如果code过期或无效，微信会返回40029错误\n" +
-                    "微信验证通过，但是miumiu数据库没有用户数据，会返回21000提示信息\n" +
+            notes = "如果code过期或无效，微信会返回40029错误; " +
+                    "微信验证通过，但是miumiu数据库没有用户数据，会返回21000提示信息; " +
                     "微信验证通过，并且miumiu存有用户信息，则返回状态码0，并返回TOKEN数据")
     @ApiResponses({
             @ApiResponse(code = -1,message = "系统繁忙，此时请开发者稍候再试"),
@@ -93,13 +92,13 @@ public class UserController {
         // 判断用户是否第一次登录
         User user = userService.getUserInfoByWx(certificateDTO.getOpenid());
         if (user == null) {
-            return JSON.parse("{\"code\":21000,\"message\":\"数据库内没有用户信息\"}");
+            return JSON.parse("{\"code\":21000,\"message\":\"数据库内没有用户信息\",\"sessionKey\":\""+certificateDTO.getSession_key()+"\"}");
         }
 
         // 更新数据库的sessionKey
         userService.updateSessionKey(certificateDTO.getOpenid(),certificateDTO.getSession_key());
         // 将用户id作为TOKEN返回
-        return JSON.parse("{\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\"}");
+        return JSON.parse("{\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\",\"sessionKey\":\""+certificateDTO.getSession_key()+"\"}");
     }
 
     /**
@@ -107,13 +106,13 @@ public class UserController {
      * @param decryptVO 加密数据
      * @return
      */
-    @ApiOperation(value = "微信小程序-解密用户敏感数据存储用户信息")
-    @ApiResponses({
-            @ApiResponse(code = 10000,message = "操作成功"),
-            @ApiResponse(code = 11111, message = "操作失败")
-    })
+    @ApiOperation(value = "微信小程序-解密用户敏感数据存储用户信息",notes = "保存成功后，会返回用户的登录TOKEN")
     @PostMapping("/wxmini/saveUserInfo")
-    public ResponseResult saveUserInfo(@RequestBody @ApiParam(name = "decryptVO",value = "加密数据类",required = true) DecryptVO decryptVO) {
+    @ApiResponses({
+            @ApiResponse(code = 10000,message = "保存成功"),
+            @ApiResponse(code = 11111,message = "保存失败")
+    })
+    public Object saveUserInfo(@RequestBody @ApiParam(name = "decryptVO",value = "加密数据类",required = true) DecryptVO decryptVO) {
         // 被加密的数据
         byte[] dataByte = Base64.decode(decryptVO.getEncryptedData());
         // 加密秘钥
@@ -163,8 +162,8 @@ public class UserController {
                         (int)resultMap.get("gender"),
                         null,(String)resultMap.get("nickName"));
                 //将User对象写入数据库
-                userService.saveUserInfo(user);
-                return new ResponseResult(CommonCode.SUCCESS);
+                User userInfo = userService.saveUserInfo(user);
+                return JSON.parse("{\"code\":10000,\"MIUMIUTOKEN\":\""+userInfo.getId()+"\"}");
             }
         } catch (NoSuchAlgorithmException e) {
             logger.error(e.getMessage(), e);
@@ -185,7 +184,7 @@ public class UserController {
         } catch (NoSuchProviderException e) {
             logger.error(e.getMessage(), e);
         }
-        return new ResponseResult(CommonCode.FAIL);
+        return JSON.parse("{\"code\":11111,\"message\":\"保存失败！\"}");
     }
 
     /**
@@ -210,6 +209,16 @@ public class UserController {
 
         PageResult<User> result = userService.findAll(page, size);
         return result;
+    }
+
+    @PostMapping("/autoLogin")
+    @ApiOperation(value = "自动登录")
+    @ApiResponses({
+            @ApiResponse(code = 10000,message = "登录成功"),
+            @ApiResponse(code = 21005, message = "登录失败")
+    })
+    public ResponseResult autoLogin(@RequestBody @ApiParam(name = "loginCodeVO",value = "用户TOKEN") AutoLoginVO autoLoginVO) {
+        return userService.autoLogin(autoLoginVO.getMIUMIUTOKEN());
     }
 
 }

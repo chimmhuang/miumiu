@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @date 2019/1/9 0009 17:49
  * @description 用户表相关操作
  */
-public interface UserDao extends JpaRepository<User, Integer> {
+public interface UserDao extends JpaRepository<User, String> {
 
     User findByWxOpenid(String openid);
 }

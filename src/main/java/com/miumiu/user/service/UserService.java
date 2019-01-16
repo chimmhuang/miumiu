@@ -1,7 +1,10 @@
 package com.miumiu.user.service;
 
 import com.miumiu.base.domain.PageResult;
+import com.miumiu.base.domain.response.CommonCode;
 import com.miumiu.domain.user.entity.User;
+import com.miumiu.domain.user.response.UserCode;
+import com.miumiu.domain.user.response.UserResult;
 import com.miumiu.user.dao.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
@@ -9,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /**
  * @author chimmhuang
@@ -34,8 +39,8 @@ public class UserService {
      * 保存用户
      * @param user 用户实体类
      */
-    public void saveUserInfo(User user) {
-        userDao.save(user);
+    public User saveUserInfo(User user) {
+        return userDao.save(user);
     }
 
     /**
@@ -61,5 +66,17 @@ public class UserService {
         Page<User> page1 = userDao.findAll(pageable);
 
         return new PageResult<User>(page1.getTotalElements(), page, page1.getTotalPages(), page1.getContent());
+    }
+
+    /**
+     * 小程序自动登录
+     * @param token 登录TOKEN
+     * @return UserResult
+     */
+    public UserResult autoLogin(String token) {
+        Optional<User> optional = userDao.findById(token);
+        return optional.isPresent() ?
+                new UserResult(CommonCode.SUCCESS, null) :
+                new UserResult(UserCode.USER_NO_SESSOION_VALUE, null);
     }
 }
