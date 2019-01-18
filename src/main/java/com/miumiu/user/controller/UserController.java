@@ -204,19 +204,18 @@ public class UserController {
      * @return
      */
     @ApiOperation(value = "查询所有用户信息",notes = "只需要传入page和size即可，若不传入，默认page=1，size=10")
-    @GetMapping("/findAll")
-    public PageResult<User> findAll(@RequestBody @ApiParam(name = "pageQueryRequest",value = "分页查询") PageQueryRequest pageQueryRequest) {
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "page",value = "当前页（起始1）",paramType = "path"),
+            @ApiImplicitParam(name = "size",value = "一页显示数（默认10）",paramType = "path")
+    })
+    @GetMapping("/findAll/{page}/{size}")
+    public PageResult<User> findAll(@PathVariable("page") int page, @PathVariable("size") int size) {
 
-        int page = 1;
-        int size = 10;
-
-        if (pageQueryRequest != null) {
-            if (pageQueryRequest.getPage() != 0) {
-                page = pageQueryRequest.getPage();
-            }
-            if (pageQueryRequest.getSize() != 0) {
-                page = pageQueryRequest.getSize();
-            }
+        if (page == 0) {
+            page = 1;
+        }
+        if (size == 0) {
+            size = 10;
         }
 
         PageResult<User> result = userService.findAll(page, size);
