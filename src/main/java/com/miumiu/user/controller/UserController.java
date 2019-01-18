@@ -74,7 +74,7 @@ public class UserController {
             @ApiResponse(code = 40029,message = "code 无效"),
             @ApiResponse(code = 45011,message = "频率限制，每个用户每分钟100次")
     })
-    public Object login(@RequestBody @ApiParam(name = "loginCodeVO",value = "传入临时TOKEN",required = true) LoginCodeVO loginCodeVO) {
+    public Map<String,Object> login(@RequestBody @ApiParam(name = "loginCodeVO",value = "传入临时TOKEN",required = true) LoginCodeVO loginCodeVO) {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid={APPID}&secret={APPSECRET}&js_code={code}&grant_type=authorization_code";
 
         Map<String, String> params = new HashMap<>(3);
@@ -85,20 +85,29 @@ public class UserController {
         String body = restTemplate.getForObject(url, String.class, params);
         LoginCertificateDTO certificateDTO = JSON.parseObject(body, LoginCertificateDTO.class);
 
+        Map<String, Object> result = new HashMap<>();
         if (certificateDTO.getErrcode() != 0) {
-            return JSON.parse("{\"code\":"+certificateDTO.getErrcode()+",\"message\":\""+certificateDTO.getErrmsg()+"\"}");
+            result.put("code", certificateDTO.getErrcode());
+            result.put("message", certificateDTO.getErrmsg());
+            return result;
         }
 
         // 判断用户是否第一次登录
         User user = userService.getUserInfoByWx(certificateDTO.getOpenid());
         if (user == null) {
-            return JSON.parse("{\"code\":21000,\"message\":\"数据库内没有用户信息\",\"sessionKey\":\""+certificateDTO.getSession_key()+"\"}");
+            result.put("code", 21000);
+            result.put("message", "数据库内没有用户信息");
+            result.put("sessionKey", certificateDTO.getSession_key());
+            return result;
         }
 
         // 更新数据库的sessionKey
         userService.updateSessionKey(certificateDTO.getOpenid(),certificateDTO.getSession_key());
         // 将用户id作为TOKEN返回
-        return JSON.parse("{\"code\":"+certificateDTO.getErrcode()+",\"MIUMIUTOKEN\":\""+user.getId()+"\",\"sessionKey\":\""+certificateDTO.getSession_key()+"\"}");
+        result.put("code", certificateDTO.getErrcode());
+        result.put("MIUMIUTOKEN", user.getId());
+        result.put("sessionKey", certificateDTO.getSession_key());
+        return result;
     }
 
     /**
@@ -151,6 +160,9 @@ public class UserController {
                  * @param _proto_:Object
                  */
                 Map<String,Object> resultMap = JSON.parseObject(result, Map.class);
+                if (userService.getUserInfoByWx((String) resultMap.get("openId")) != null) {
+                    return JSON.parse("{\"code\":11111,\"message\":\"数据库内已经有该用户数据了\"}");
+                }
                 //将解密后的内容提取出来存放到user对象中
                 User user = new User(
                         StringUtil.uuid(),
@@ -211,6 +223,11 @@ public class UserController {
         return result;
     }
 
+    /**
+     * 自动登录
+     * @param autoLoginVO MIUMIUTOKEN
+     * @return
+     */
     @PostMapping("/autoLogin")
     @ApiOperation(value = "自动登录")
     @ApiResponses({
