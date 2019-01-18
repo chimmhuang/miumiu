@@ -1,7 +1,10 @@
 package com.miumiu.user.service;
 
+import com.alibaba.fastjson.JSON;
 import com.miumiu.MiumiuApplication;
+import com.miumiu.base.utils.FormatUtil;
 import com.miumiu.domain.user.entity.User;
+import com.miumiu.domain.user.response.UserResult;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,5 +37,12 @@ public class UserServiceTest {
         String sessionKey = "test";
         String openId = "o9osA0XLjYc6DKotPlovpuPCKvdM";
         userService.updateSessionKey(openId,sessionKey);
+    }
+
+    @Test
+    public void testAutoLogin() throws Exception {
+        String token = "04ff2456d3ec436aa91e20534e2606d820190117";
+        UserResult userResult = userService.autoLogin(token);
+        FormatUtil.printJson(JSON.toJSONString(userResult));
     }
 }
